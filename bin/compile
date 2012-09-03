@@ -19,6 +19,12 @@ BUILD_DIR=$1
 CACHE_DIR=$2
 LP_DIR=`cd $(dirname $0); cd ..; pwd`
 
+# Phantom params
+PHANTOM_VERSION="1.6.1"
+PHANTOM_S3_BUCKET="stomita-buildpack-phantomjs"
+PHANTOM_FILE_NAME="buildpack-phantomjs-${VERSION}.tar.gz"
+BUILDPACK_PHANTOMJS_PACKAGE="http://${S3_BUCKET}.s3.amazonaws.com/${FILE_NAME}"
+
 function error() {
   echo " !     $*" >&2
   exit 1
@@ -99,6 +105,18 @@ function package_download() {
   curl $package -s -o - | tar xzf - -C $location
 }
 
+function install_phantom() {
+  mkdir -p $CACHE_DIR
+  if ! [ -e $CACHE_DIR/$FILE_NAME ]; then
+    echo "-----> Fetching PhantomJS buildpack binaries"
+    curl $BUILDPACK_PHANTOMJS_PACKAGE -s -o $CACHE_DIR/$FILE_NAME
+  fi
+
+  echo "-----> Extracting PhantomJS binaries"
+  mkdir -p $BUILD_DIR/vendor/phantomjs
+  tar zxf $CACHE_DIR/$FILE_NAME -C $BUILD_DIR/vendor/phantomjs
+}
+
 bootstrap_node=$(mktmpdir bootstrap_node)
 package_download "nodejs" "0.4.7" $bootstrap_node
 
@@ -176,3 +194,7 @@ echo "Dependencies installed" | indent
 echo "-----> Building runtime environment"
 mkdir -p $BUILD_DIR/.profile.d
 echo "export PATH=\"\$HOME/bin:\$HOME/node_modules/.bin:\$PATH\"" > $BUILD_DIR/.profile.d/nodejs.sh
+
+# Phantom
+echo "-----> Installing Phantomjs"
+install_phantom
